@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Photo Manipulation</title>
+    <style type="text/css">
+    	body {
+  background-color: #333;
+}
+body, button {
+  font-family: 'Montserrat', sans-serif;
+  font-size: small;
+  color: white;
+}
+    
+.playground {
+    background-color: #111;
+    position: fixed;
+    top: 0;
+    left: 340px;
+    bottom: 0;
+    right: 0;
+    border: 2px solid#fff;
+}
+    
+.margin {
+  margin: 10px;
+  width: 300px;
+}
+    
+#filterButtons {
+  width: 300px;
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+
+li {
+  margin-left: -20px;
+  list-style: none;
+}
+    
+button,.btn {
+  
+    padding: 10px;
+    margin-right: 8px;
+    margin-bottom: 8px;
+    color: white;
+    background-color: #6496c8;
+    border: 1px solid #fff;
+}
+button:hover,
+button.hover,.btn:hover {
+  background-color: #417cb8
+}
+button:active,
+button.active {
+  background-color: #417cb8;
+ transform: translateY(2px) translateX(1px);
+}    
+    
+button:disabled,
+button.disabled {
+  background-color: darkgrey;
+  transform: translateY(2px) translateX(1px);
+}
+
+.btn-green{
+  
+    padding: 10px;
+    margin: 8px;
+    color: #fff;
+    background-color: #4CAF50;
+    border: 1px solid #fff;
+}
+.btn-green:hover{
+  
+    padding: 10px;
+    margin: 8px;
+    color: #fff;
+    background-color: #19AA50;
+    border: 1px solid #fff;
+    cursor: pointer;
+}
+.photo {
+  
+    box-shadow: 3px 3px 3px #888888;
+    position: absolute;
+    top: 0;
+    left: 0;
+    margin: 30px;
+    padding: 12px;
+    background-color: white;
+    cursor: no-drop;
+    width: 50%;
+    height: auto;
+    transition: all 0.5s;
+}
+
+.0000photo:hover {
+  position: absolute;
+  -webkit-transform: translateY(-1px) translateX(-1px) rotate(0deg) scale(1.5);
+  z-index: 999;
+  box-shadow: 15px 15px 30px #666;
+}
+
+input[type="file"] {
+    display: none;
+}
+
+</style>
+</head>
+<body>
+  <video id="video" width="320" height="240" class="margin"></video>
+  <canvas id="canvas" width="320" height="240" style="display: none;"></canvas>
+  <div id="stack" class="playground">
+  </div>
+  <div class="margin">
+    <p>
+      <div id="filterButtons"></div>
+    </p>
+    <ol type="1">
+      <li><button id="startButton">Start webcam</button></li> 
+      <li><button id="photoButton">Take photo</button></li>
+      <li><br></li>
+      <li><label class="btn"><input type="file" id="myFile" onchange="uploadFile(event)" accept=".jpg,.jpeg,.png,.gif,.tiff">Choose from Computer</label><span id="fileUploadText">Select A File</span></li>
+      <li class="margin"><button onclick="saveToServer()" class="btn-green">Save To Server</button></li>
+    </ol>
+  </div>
+<script src="http://code.jquery.com/jquery-latest.min.js"></script>
+<script type="text/javascript">
+var fileToUpload=null;
+
+function saveToServer()
+{
+  
+var formData = new FormData(), xhr = new XMLHttpRequest();
+       formData.append("image", fileToUpload);
+     xhr.open('POST', 'insert.php');
+  xhr.send(formData);
+  xhr.onload = function() {
+                alert(xhr.responseText);
+     
+    }
+    
+}
+
+function dataURItoBlob(dataURI) {
+  var byteString = atob(dataURI.split(',')[1]);
+  var ab = new ArrayBuffer(byteString.length);
+  var ia = new Uint8Array(ab);
+  for (var i = 0; i < byteString.length; i++) { ia[i] = byteString.charCodeAt(i); }
+  return new Blob([ab], { type: 'image/jpeg' });
+}
+function uploadFile(evnt)
+{
+
+  var x = document.getElementById("myFile");
+  var txt="";
+  if ('files' in x) {
+    if (x.files.length == 0) {
+        txt = "Select one or more files.";
+    } else {
+       
+            var file = evnt.target.files[0];
+            fileToUpload=file;
+            txt = "<br /><br /><br />" +  file.name + " is selected </strong><br>";
+            var element = document.createElement("img");
+            element.src =URL.createObjectURL(file);
+            element.className = "photo";
+            document.getElementById("stack").innerHTML='';        
+            document.getElementById("stack").appendChild(element);        
+
+    }
+  }
+document.getElementById ("fileUploadText").innerHTML = txt;
+
+}
+
+ 	(function() {
+    // A button for each filter will be created dynamically
+    var filters = [ { 
+      name: "Reset",
+      filter: ""
+    }, { 
+      name: "Blur",
+      filter: "blur(3px)"
+    }, { 
+      name: "BnW",
+      filter: "grayscale(100%)" 
+    },{
+      name: "Sepia",
+      filter: "sepia(400%)"
+    }];
+          
+    var video = document.getElementById('video');
+    var canvas = document.getElementById('canvas');
+    var canvasContext = canvas.getContext('2d');
+    
+    navigator.getUserMedia = (navigator.getUserMedia ||
+      navigator.webkitGetUserMedia ||
+      navigator.mozGetUserMedia ||
+      navigator.msGetUserMedia);
+		
+    if (navigator.getUserMedia) {
+      function gotStream(stream) {
+        if (navigator.mozGetUserMedia) {
+          video.mozSrcObject = stream;
+        } else {
+          var vendorURL = window.URL || window.webkitURL;
+          video.src = vendorURL.createObjectURL(stream); 
+        }
+        video.play();
+      }
+        
+      function error(message) {
+        console.log(message);
+      }
+      
+      function start() {
+        this.disabled = true;
+        navigator.getUserMedia( { 
+          audio: false,  
+          video: {
+            mandatory: {
+              maxWidth: 320,
+              maxHeight: 240
+            }
+          }
+        }, 
+        gotStream, 
+        error);
+      }
+      
+      function getRandomNumberWithMax (max) {
+        return Math.floor(Math.random() * max);
+      }
+      
+      function takePhoto() {
+        canvasContext.drawImage(video, 0, 0, 320, 240);
+        var element = document.createElement("img");
+        var dataURL=canvas.toDataURL();
+        element.src = dataURL;
+        element.style.zIndex = z;
+        element.style.filter = video.style.filter;
+        element.style.webkitFilter = video.style.webkitFilter;
+        element.className = "photo";
+        document.getElementById("stack").innerHTML=''; 
+        document.getElementById("stack").appendChild(element);  
+
+       
+        var file=dataURItoBlob(dataURL);
+
+        fileToUpload=file;      
+      }
+
+      var draggedElement;
+      var x, y, z = 0;
+
+      function dragStart(e) {
+        draggedElement = e.target;
+        x = e.clientX - draggedElement.offsetLeft;
+        y = e.clientY - draggedElement.offsetTop;
+        e.dataTransfer.setDragImage(draggedElement, x-340, y);
+      }
+
+           
+      document.getElementById("startButton").addEventListener('click', start);
+      document.getElementById("photoButton").addEventListener('click', takePhoto);      				
+
+      function findFilterByName (filterArray, name) {
+        for(var i = 0; i < filterArray.length; i++) {
+          if(filterArray[i].name === name) {
+            return filterArray[i];
+          }
+        }
+        // Not found
+        return null;
+      };
+   
+      thisBrowserSupportsCssFilters = function () {
+        var prefixes = " -webkit- -moz- -o- -ms- ".split(" ");
+        var el = document.createElement('div');
+        el.style.cssText = prefixes.join('filter:blur(2px); ');
+        return !!el.style.length && ((document.documentMode === undefined || document.documentMode > 9));
+      };
+      
+      if(thisBrowserSupportsCssFilters()) {
+        var buttonsDiv = document.getElementById("filterButtons");    
+
+        filters.forEach(function(item){
+          var button = document.createElement("button");
+          button.id = item.name;
+          button.innerHTML = item.name;
+          // This will cause a re-flow of the page 
+          buttonsDiv.appendChild(button);    
+        });
+
+        function filterClicked (event) {
+          event = event || window.event;
+          var target = event.target || event.srcElement;
+          if(target.nodeName === "BUTTON") {
+            var filter = findFilterByName(filters, target.id);
+            if(filter) {
+              video.style.filter = filter.filter;
+              video.style.webkitFilter = filter.filter;
+            }
+          }
+        };
+        buttonsDiv.addEventListener("click", filterClicked, false);
+      }
+
+    } else {
+      document.getElementById("startButton").disabled = true;
+      document.getElementById("photoButton").disabled = true;
+      
+      alert("Sorry, you can't capture video from your webcam in this web browser. Try the latest desktop version of Firefox, Chrome or Opera.");
+    }
+  })();
+</script>
+</body>
+</html>
